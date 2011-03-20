@@ -2,20 +2,19 @@
 
 import gtk
 import sys
-import uberbus.moodlamp
 import dbus, gobject, avahi
 from dbus.mainloop.glib import DBusGMainLoop
+import uberbus.moodlamp
 
-TYPE="_moodlamp._udp"
+TYPE = "_moodlamp._udp"
 #TODO: Text input for fadetime
 t = 0.5
 icon = "/usr/share/ub-colorgui/ml_icon.png"
 #TODO: Autodetect lamps using avahi
 #lamps = ["alle.local", "moon.local", "spot.local", "oben.local", "unten.local"]
 
-
-class UBColorGui:
-    def __init__(self):
+class UBColorGui(object):
+    def __init__(self, loop):
         window = gtk.Window()
         vbox1 = gtk.VBox()
         hbox1 = gtk.HBox()
@@ -30,30 +29,23 @@ class UBColorGui:
         label = gtk.Label("Selected Lamp:")
         separator = gtk.HSeparator()
         vbox1.pack_start(hbox1)
-        hbox1.pack_start(label,False,False,1)
-        hbox1.pack_start(self.combobox,True,True,2)
+        hbox1.pack_start(label, False, False, 1)
+        hbox1.pack_start(self.combobox, True, True, 2)
         vbox1.pack_start(separator)
         vbox1.pack_start(color,True,True,2)
         hbox1.set_border_width(5)
-#        for name in lamps:
-#            combobox.append_text(name)
         window.show_all()
-#        self.lamp=lamps[0]
-        loop = DBusGMainLoop()
+
         bus = dbus.SystemBus(mainloop=loop)
-        self.server = dbus.Interface( bus.get_object(avahi.DBUS_NAME, '/'), 'org.freedesktop.Avahi.Server')
+        self.server = dbus.Interface(bus.get_object(avahi.DBUS_NAME, '/'), 'org.freedesktop.Avahi.Server')
         sbrowser = dbus.Interface(bus.get_object(avahi.DBUS_NAME,
-        self.server.ServiceBrowserNew(avahi.IF_UNSPEC,
-            avahi.PROTO_UNSPEC, TYPE, 'local', dbus.UInt32(0))),
-        avahi.DBUS_INTERFACE_SERVICE_BROWSER)
+            self.server.ServiceBrowserNew(avahi.IF_UNSPEC,
+                avahi.PROTO_UNSPEC, TYPE, 'local', dbus.UInt32(0))),
+            avahi.DBUS_INTERFACE_SERVICE_BROWSER)
         sbrowser.connect_to_signal("ItemNew", self.mlfound)
 
     def mlfound(self, interface, protocol, name, stype, domain, flags):
         print "Found service '%s' type '%s' domain '%s' " % (name, stype, domain)
-
-        if flags & avahi.LOOKUP_RESULT_LOCAL:
-                # local service, skip
-                pass
 
         self.server.ResolveService(interface, protocol, name, stype,
             domain, avahi.PROTO_UNSPEC, dbus.UInt32(0),
@@ -87,9 +79,9 @@ class UBColorGui:
             s.disconnect()
 
 def main():
+    loop = DBusGMainLoop()
+    bcb = UBColorGui(loop)
     gtk.main()
-    return
 
 if __name__== "__main__":
-    bcb = UBColorGui()
     main()
